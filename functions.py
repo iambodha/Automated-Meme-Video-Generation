@@ -60,3 +60,69 @@ def databaseDuplicateHandlingCSV(databaseCSV):
  df=pd.read_csv(databaseCSV)
  df.drop_duplicates(subset='Title',keep='first',inplace=True)
  df.to_csv(databaseCSV,index=False)
+
+def databaseDuplicateHandlingFolder(videosDir):
+ file_hashes={}
+ for filename in os.listdir(videosDir):
+  filepath=os.path.join(videosDir,filename)
+  if os.path.isfile(filepath)and filename.lower().endswith('.mp4'):
+   with open(filepath,'rb')as f:
+    file_hash=hashlib.md5(f.read()).hexdigest()
+   if file_hash in file_hashes:
+    print(f"Deleting duplicate file: {filename}")
+    os.remove(filepath)
+   else:
+    file_hashes[file_hash]=filename
+
+def checkIfAllFilesPresent(databaseCSV,videosDir):
+ df=pd.read_csv(databaseCSV)
+ for index,row in df.iterrows():
+  video_title=row['Title']
+  video_path=os.path.join(videosDir,video_title)
+  if not os.path.isfile(video_path):
+   df=df.drop(index)
+ df.to_csv(databaseCSV,index=False)
+
+def pickRandomVideos(databaseCSV,videosDir,makingStage1):
+ df=pd.read_csv(databaseCSV)
+ available_videos=df[df['Used']==0]
+ available_videos=available_videos.sample(frac=1)
+ total_length=0
+ selected_videos=[]
+ max_tries=100
+ try_count=0
+ for index,row in available_videos.iterrows():
+  video_title=row['Title']
+  video_length=row['Length']
+  if total_length+video_length<=50:
+   src_path=os.path.join(videosDir,video_title)
+   dest_path=os.path.join(makingStage1,video_title)
+   shutil.copyfile(src_path,dest_path)
+   df.at[index,'Used']=0
+   total_length+=video_length
+   selected_videos.append(video_title)
+  else:
+   try_count+=1
+   if try_count>=max_tries:
+    break
+ df.to_csv(databaseCSV,index=False)
+ return selected_videos
+
+def resizeVideos(makingStage1,makingStage2):
+ if not os.path.exists(makingStage2):
+  os.makedirs(makingStage2)
+ for filename in os.listdir(makingStage1):
+  if filename.endswith(".mp4")or filename.endswith(".avi"):
+   input_path=os.path.join(makingStage1,filename)
+   output_path=os.path.join(makingStage2,filename)
+   command=["ffmpeg","-i",input_path,"-vf","scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2","-c:a","copy",output_path]
+   subprocess.run(command,capture_output=True,text=True)
+
+def getFirstFrame(makingStage2,makingStage3):
+ if not os.path.exists(makingStage2)or not os.path.exists(makingStage3):
+  print("Error: Input or output directory does not exist.")
+  return
+ for video_file in os.listdir(makingStage2):
+  if video_file.endswith(".mp4")or video_file.endswith(".avi")or video_file.endswith(".mkv"):
+   video_path=os.path.join(makingStage2,video_file)
+   cap=cv2.VideoCapture(video_path)
