@@ -187,174 +187,207 @@ def getFirstFrame(makingStage2, makingStage3):
                 cv2.imwrite(frame_path, frame)
 
             cap.release()
+def getAllCoveredFrames(makingStage3, makingStage4):
+    if not os.path.exists(makingStage4):
+        os.makedirs(makingStage4)
+    
+    for filename in os.listdir(makingStage3):
+        if filename.endswith(".jpg"):
+            img_path = os.path.join(makingStage3, filename)
+            img = cv2.imread(img_path)
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
+            hImg, wImg, _ = img.shape
+            boxes = pytesseract.image_to_data(img)
 
-def getAllCoveredFrames(makingStage3,makingStage4):
- if not os.path.exists(makingStage4):
-  os.makedirs(makingStage4)
- for filename in os.listdir(makingStage3):
-  if filename.endswith(".jpg"):
-   img_path=os.path.join(makingStage3,filename)
-   img=cv2.imread(img_path)
-   img=cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
-   print(img.shape)
-   hImg,wImg,_=img.shape
-   boxes=pytesseract.image_to_data(img)
-   for a,b in reversed(list(enumerate(boxes.splitlines()))):
-    if a!=0:
-     b=b.split()
-     print(b)
-     if len(b)==12 and float(b[10])>=0.90:
-      x,y,w,h=map(int,b[6:10])
-      new_w=int(w*1.15)
-      new_h=int(h*1.15)
-      new_x=max(0,x-int((new_w-w)/2))
-      new_y=max(0,y-int((new_h-h)/2))
-      img[new_y:new_y+new_h,new_x:new_x+new_w]=[255,255,255]
-      img=cv2.cvtColor(img,cv2.COLOR_RGB2BGR)
-      output_path=os.path.join(makingStage4,f'{a}_{filename}')
-      cv2.imwrite(output_path,img)
-      img=cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
+            for a, b in reversed(list(enumerate(boxes.splitlines()))):
+                if a != 0:
+                    b = b.split()
+                    if len(b) == 12 and float(b[10]) >= 0.90:
+                        x, y, w, h = map(int, b[6:10])
+
+                        new_w = int(w * 1.15)
+                        new_h = int(h * 1.15)
+
+                        new_x = max(0, x - int((new_w - w) / 2))
+                        new_y = max(0, y - int((new_h - h) / 2))
+
+                        img[new_y:new_y + new_h, new_x:new_x + new_w] = [255, 255, 255]
+                        img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+
+                        output_path = os.path.join(makingStage4, f'{a}_{filename}')
+                        cv2.imwrite(output_path, img)
+                        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
 def getTextList(makingStage3):
- if not makingStage3.endswith('/'):
-  makingStage3+='/'
- textDict={}
- files=[f for f in os.listdir(makingStage3)if f.lower().endswith('.jpg')]
- for file in files:
-  file_path=makingStage3+file
-  img=cv2.imread(file_path)
-  img=cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
-  textBox=pytesseract.image_to_data(img)
-  text=""
-  for a,b in enumerate(textBox.splitlines()):
-   if a!=0:
-    b=b.split()
-    if len(b)==12 and float(b[10])>=0.90:
-     text+=b[11]+" "
-  text=re.sub(r'\|','I',text)
-  image_title=os.path.splitext(file)[0]
-  textDict[image_title]=text
- print(textDict)
- return textDict
+    if not makingStage3.endswith('/'):
+        makingStage3 += '/'
+
+    textDict = {}
+
+    files = [f for f in os.listdir(makingStage3) if f.lower().endswith('.jpg')]
+
+    for file in files:
+        file_path = makingStage3 + file
+        img = cv2.imread(file_path)
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+        textBox = pytesseract.image_to_data(img)
+
+        text = ""
+        for a, b in enumerate(textBox.splitlines()):
+            if a != 0:
+                b = b.split()
+                if len(b) == 12 and float(b[10]) >= 0.90:
+                    text += b[11] + " "
+        text = re.sub(r'\|', 'I', text)
+
+        image_title = os.path.splitext(file)[0]
+
+        textDict[image_title] = text
+    print(textDict)
+    return textDict
 
 def getAudioFiles(textDict,makingStage5):
- chrome_options=Options()
- chrome_options.add_argument("--headless")
- driver=webdriver.Chrome(executable_path=webdriver_path,options=chrome_options)
- url='https://beta.meetaugie.com/sign-in'
- driver.get(url)
- email_input=driver.find_element(By.ID,'email')
- email_input.send_keys('your@gmail.com')
- password_input=driver.find_element(By.ID,'password')
- password_input.send_keys('password')
- login_button=driver.find_element(By.XPATH,"//button[contains(.,'Login')]")
- login_button.click()
- time.sleep(2)
- create_url="https://beta.meetaugie.com/create"
- driver.get(create_url)
- time.sleep(2)
- script_button=driver.find_element(By.XPATH,"//button[contains(.,'I have a script that I want to turn into a video')]")
- script_button.click()
- go_button=driver.find_element(By.XPATH,"//button[contains(.,"LET'S GO")]")
- go_button.click()
- editing_button=driver.find_element(By.XPATH,"//button[@aria-label='Enable text editing']")
- editing_button.click()
- textarea=driver.find_element(By.ID,'scriptEditorTextArea')
- textarea.clear()
- textarea.send_keys('Test')
- done_button=driver.find_element(By.XPATH,"//button[@class='bg-[#442C6B] w-[94px] h-6 text-tActive text-[15px] py-2 px-4 rounded-full inline-flex justify-center items-center w-48']")
- done_button.click()
- voice_button=driver.find_element(By.XPATH,"//button[@aria-label='Choose a Voice']")
- voice_button.click()
- time.sleep(15)
- option_voice=driver.find_element(By.XPATH,"//div[text()='Jeremy']")
- option_voice.click()
- for image_title,text in textDict.items():
-  if not text:
-   print(f"Skipping empty text for image {image_title}")
-   continue
-  editing_button=driver.find_element(By.XPATH,"//button[@aria-label='Enable text editing']")
-  editing_button.click()
-  textarea=driver.find_element(By.ID,'scriptEditorTextArea')
-  textarea.clear()
-  textarea.send_keys(text)
-  done_button=driver.find_element(By.XPATH,"//button[@class='bg-[#442C6B] w-[94px] h-6 text-tActive text-[15px] py-2 px-4 rounded-full inline-flex justify-center items-center w-48']")
-  done_button.click()
-  finish_button=driver.find_element(By.XPATH,"//button[@class='w-[210px] h-[30px] mt-4 !text-surface1 rounded-lg font-bold !bg-highlight1 justify-center text-center']")
-  finish_button.click()
-  time.sleep(10)
-  audio_element=driver.find_element(By.XPATH,'//audio')
-  audio_src=audio_element.get_attribute('src')
-  response=requests.get(audio_src,stream=True)
-  filename=f'{makingStage5}{image_title}.mp3'
-  with open(filename,'wb')as file:
-   shutil.copyfileobj(response.raw,file)
- driver.quit()
+    chrome_options = Options()
+    chrome_options.add_argument("--headless")
+    driver = webdriver.Chrome(executable_path=webdriver_path, options=chrome_options)
+    url = 'https://beta.meetaugie.com/sign-in'
+    driver.get(url)
+    email_input = driver.find_element(By.ID, 'email')
+    email_input.send_keys('your@gmail.com')
+    password_input = driver.find_element(By.ID, 'password')
+    password_input.send_keys('password')
+    login_button = driver.find_element(By.XPATH, "//button[contains(., 'Login')]")
+    login_button.click()
+    time.sleep(2)
+    create_url = "https://beta.meetaugie.com/create"
+    driver.get(create_url)
+    time.sleep(2)
+    script_button = driver.find_element(By.XPATH, "//button[contains(., 'I have a script that I want to turn into a video')]")
+    script_button.click()
+    go_button = driver.find_element(By.XPATH, "//button[contains(., \"LET'S GO\")]")
+    go_button.click()
+    editing_button = driver.find_element(By.XPATH, "//button[@aria-label='Enable text editing']")
+    editing_button.click()
+    textarea = driver.find_element(By.ID, 'scriptEditorTextArea')
+    textarea.clear()
+    textarea.send_keys('Test')
+    done_button = driver.find_element(By.XPATH, "//button[@class='bg-[#442C6B] w-[94px] h-6 text-tActive text-[15px] py-2 px-4 rounded-full inline-flex justify-center items-center w-48']")
+    done_button.click()
+    voice_button = driver.find_element(By.XPATH, "//button[@aria-label='Choose a Voice']")
+    voice_button.click()
+    time.sleep(15)
+    option_voice = driver.find_element(By.XPATH, "//div[text()='Jeremy']")
+    option_voice.click()
+    for image_title, text in textDict.items():
+        if not text:
+            print(f"Skipping empty text for image {image_title}")
+            continue
+        editing_button = driver.find_element(By.XPATH, "//button[@aria-label='Enable text editing']")
+        editing_button.click()
+        textarea = driver.find_element(By.ID, 'scriptEditorTextArea')
+        textarea.clear()
+        textarea.send_keys(text)
+        done_button = driver.find_element(By.XPATH, "//button[@class='bg-[#442C6B] w-[94px] h-6 text-tActive text-[15px] py-2 px-4 rounded-full inline-flex justify-center items-center w-48']")
+        done_button.click()
+        finish_button = driver.find_element(By.XPATH, "//button[@class='w-[210px] h-[30px] mt-4 !text-surface1 rounded-lg font-bold !bg-highlight1 justify-center text-center']")
+        finish_button.click()
+        time.sleep(10)
+        audio_element = driver.find_element(By.XPATH, '//audio')
+        audio_src = audio_element.get_attribute('src')
+        response = requests.get(audio_src, stream=True)
+        filename = f'{makingStage5}{image_title}.mp3'
+        with open(filename, 'wb') as file:
+            shutil.copyfileobj(response.raw, file)
+    driver.quit()
 
-def makeVideoAudioSection(makingStage4,makingStage5,makingStage6):
- for audio_file in os.listdir(makingStage5):
-  if audio_file.endswith(".mp3"):
-   audio_path=os.path.join(makingStage5,audio_file)
-   filename=os.path.splitext(audio_file)[0]
-   image_files=[f for f in os.listdir(makingStage4)if f.endswith(f"{filename}.jpg")]
-   image_files=sorted(image_files,key=lambda x:int(x.split('_')[0]))
-   image_files_with_paths=[(f,os.path.join(makingStage4,f))for f in image_files]
-   audio_duration=len(AudioSegment.from_file(audio_path))/1000
-   num_images=len(image_files)
-   image_duration=audio_duration/num_images if num_images>0 else 0
-   fps=30
-   output_video_path=os.path.join(makingStage6,f"{filename}.mp4")
-   video_writer=imageio.get_writer(output_video_path,fps=fps)
-   for image_file,image_path in image_files_with_paths:
-    img=imageio.imread(image_path)
-    for _ in range(int(fps*image_duration)):
-     video_writer.append_data(img)
-   video_writer.close()
+def makeVideoAudioSection(makingStage4, makingStage5, makingStage6):
+    for audio_file in os.listdir(makingStage5):
+        if audio_file.endswith(".mp3"):
+            audio_path = os.path.join(makingStage5, audio_file)
+            filename = os.path.splitext(audio_file)[0]
+            image_files = [f for f in os.listdir(makingStage4) if f.endswith(f"{filename}.jpg")]
+            image_files = sorted(image_files, key=lambda x: int(x.split('_')[0]))
+            image_files_with_paths = [(f, os.path.join(makingStage4, f)) for f in image_files]
 
-def combineVideoAudioPart1(makingStage5,makingStage6,makingStage7,fp3=30):
- if not os.path.exists(makingStage7):
-  os.makedirs(makingStage7)
- for mp4_file in os.listdir(makingStage6):
-  if mp4_file.endswith(".mp4"):
-   mp4_path=os.path.join(makingStage6,mp4_file)
-   video_title=os.path.splitext(mp4_file)[0]
-   mp3_file=f"{video_title}.mp3"
-   mp3_path=os.path.join(makingStage5,mp3_file)
-   if os.path.exists(mp3_path):
-    video_clip=VideoFileClip(mp4_path)
-    audio_clip=AudioFileClip(mp3_path)
-    video_clip=video_clip.set_audio(audio_clip)
-    video_clip=video_clip.set_fps(fp3)
-    output_path=os.path.join(makingStage7,f"{video_title}.mp4")
-    video_clip.write_videofile(output_path,codec="libx264",audio_codec="aac")
-    video_clip.close()
-    audio_clip.close()
+            audio_duration = len(AudioSegment.from_file(audio_path))/1000
+            num_images = len(image_files)
+            image_duration = audio_duration / num_images if num_images > 0 else 0
 
-def combineIntroMain(makingStage2,makingStage7,makingStage8):
- if not os.path.exists(makingStage8):os.makedirs(makingStage8)
- stage7_clips=[clip for clip in os.listdir(makingStage7)if clip.endswith('.mp4')]
- for clip_name in stage7_clips:
-  stage7_path=os.path.join(makingStage7,clip_name)
-  stage2_path=os.path.join(makingStage2,clip_name)
-  if os.path.exists(stage2_path):
-   clip_stage7=VideoFileClip(stage7_path)
-   clip_stage2=VideoFileClip(stage2_path)
-   combined_clip=concatenate_videoclips([clip_stage7,clip_stage2],method="compose")
-   combined_clip=combined_clip.set_fps(30)
-   output_path=os.path.join(makingStage8,clip_name)
-   combined_clip.write_videofile(output_path,codec="libx264",audio_codec="aac")
-   clip_stage7.close()
-   clip_stage2.close()
+            fps = 30
 
-def combineAllClips(makingStage8,makingStage9):
- os.makedirs(makingStage9,exist_ok=True)
- stage8_files=[f for f in os.listdir(makingStage8)if f.endswith(".mp4")]
- video_clips=[VideoFileClip(os.path.join(makingStage8,file))for file in stage8_files]
- final_clip=concatenate_videoclips(video_clips,method="compose")
- final_clip.write_videofile(os.path.join(makingStage9,"combined_video.mp4"),codec="libx264",audio_codec="aac")
- final_clip.close()
- for clip in video_clips:clip.close()
+            output_video_path = os.path.join(makingStage6, f"{filename}.mp4")
+            video_writer = imageio.get_writer(output_video_path, fps=fps)
+
+            for image_file, image_path in image_files_with_paths:
+                img = imageio.imread(image_path)
+
+                for _ in range(int(fps * image_duration)):
+                    video_writer.append_data(img)
+
+            video_writer.close()
+
+def combineVideoAudioPart1(makingStage5, makingStage6, makingStage7, fp3=30):
+    if not os.path.exists(makingStage7):
+        os.makedirs(makingStage7)
+
+    for mp4_file in os.listdir(makingStage6):
+        if mp4_file.endswith(".mp4"):
+            mp4_path = os.path.join(makingStage6, mp4_file)
+            video_title = os.path.splitext(mp4_file)[0]
+            mp3_file = f"{video_title}.mp3"
+            mp3_path = os.path.join(makingStage5, mp3_file)
+
+            if os.path.exists(mp3_path):
+                video_clip = VideoFileClip(mp4_path)
+                audio_clip = AudioFileClip(mp3_path)
+
+                video_clip = video_clip.set_audio(audio_clip)
+                video_clip = video_clip.set_fps(fp3)
+
+                output_path = os.path.join(makingStage7, f"{video_title}.mp4")
+                video_clip.write_videofile(output_path, codec="libx264", audio_codec="aac")
+
+                video_clip.close()
+                audio_clip.close()
+
+def combineIntroMain(makingStage2, makingStage7, makingStage8):
+    if not os.path.exists(makingStage8):
+        os.makedirs(makingStage8)
+
+    stage7_clips = [clip for clip in os.listdir(makingStage7) if clip.endswith('.mp4')]
+
+    for clip_name in stage7_clips:
+        stage7_path = os.path.join(makingStage7, clip_name)
+        stage2_path = os.path.join(makingStage2, clip_name)
+
+        if os.path.exists(stage2_path):
+            clip_stage7 = VideoFileClip(stage7_path)
+            clip_stage2 = VideoFileClip(stage2_path)
+
+            combined_clip = concatenate_videoclips([clip_stage7, clip_stage2], method="compose")
+            combined_clip = combined_clip.set_fps(30)
+
+            output_path = os.path.join(makingStage8, clip_name)
+            combined_clip.write_videofile(output_path, codec="libx264", audio_codec="aac")
+
+            clip_stage7.close()
+            clip_stage2.close()
+
+def combineAllClips(makingStage8, makingStage9):
+    os.makedirs(makingStage9, exist_ok=True)
+
+    stage8_files = [f for f in os.listdir(makingStage8) if f.endswith(".mp4")]
+
+    video_clips = [VideoFileClip(os.path.join(makingStage8, file)) for file in stage8_files]
+    final_clip = concatenate_videoclips(video_clips, method="compose")
+
+    final_clip.write_videofile(os.path.join(makingStage9, "combined_video.mp4"), codec="libx264", audio_codec="aac")
+
+    final_clip.close()
+    for clip in video_clips:
+        clip.close()
 
 def addWaterMark(folder_path,waterMark):
  files=os.listdir(folder_path)
