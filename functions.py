@@ -301,3 +301,85 @@ def combineIntroMain(makingStage2,makingStage7,makingStage8):
    combined_clip.write_videofile(output_path,codec="libx264",audio_codec="aac")
    clip_stage7.close()
    clip_stage2.close()
+
+def combineAllClips(makingStage8,makingStage9):
+ os.makedirs(makingStage9,exist_ok=True)
+ stage8_files=[f for f in os.listdir(makingStage8)if f.endswith(".mp4")]
+ video_clips=[VideoFileClip(os.path.join(makingStage8,file))for file in stage8_files]
+ final_clip=concatenate_videoclips(video_clips,method="compose")
+ final_clip.write_videofile(os.path.join(makingStage9,"combined_video.mp4"),codec="libx264",audio_codec="aac")
+ final_clip.close()
+ for clip in video_clips:clip.close()
+
+def addWaterMark(folder_path,waterMark):
+ files=os.listdir(folder_path)
+ video_file=next((file for file in files if file.lower().endswith('.mp4')),None)
+ if video_file:
+  input_video_path=os.path.join(folder_path,video_file)
+  output_video_path=os.path.join(folder_path,'output.mp4')
+  ffmpeg_command=(f"ffmpeg -i {input_video_path} -i {waterMark} "f"-filter_complex [1]scale=iw/2.5:ih/2.5[scaled];[0][scaled]overlay=10:(H-h)/2 "f"{output_video_path}")
+  os.system(ffmpeg_command)
+  os.remove(input_video_path)
+  os.rename(output_video_path,input_video_path)
+
+def finishUp(databaseCSV,makingStage1,makingStage2,makingStage3,makingStage4,makingStage5,makingStage6,makingStage7,makingStage8,makingStage9,outputDir):
+ df=pd.read_csv(databaseCSV)
+ highest_video_id=df['VideoID'].max()
+ for filename in os.listdir(makingStage1):
+  if filename.endswith('.mp4'):
+   file_path=os.path.join(makingStage1,filename)
+   row=df[df['Title']==filename]
+   if not row.empty:
+    df.loc[df['Title']==filename,'Used']=1
+    df.loc[df['Title']==filename,'VideoID']=highest_video_id+1
+ for filename in os.listdir(makingStage9):
+  if filename.endswith('.mp4'):
+   file_path=os.path.join(makingStage9,filename)
+   new_filename=f"MemeCompliation{highest_video_id+1}.mp4"
+   print(new_filename)
+   new_filepath=os.path.join(outputDir,new_filename)
+   shutil.move(file_path,new_filepath)
+ df.to_csv(databaseCSV,index=False)
+ for making_stage_dir in [makingStage1,makingStage2,makingStage3,makingStage4,makingStage5,makingStage6,makingStage7,makingStage8]:
+  for file in os.listdir(making_stage_dir):
+   file_path=os.path.join(making_stage_dir,file)
+   try:
+    if os.path.isfile(file_path):os.unlink(file_path)
+   except Exception as e:print(f"Error deleting {file_path}: {e}")
+
+def retry_function_until_success():
+ max_retries=10
+ retries=0
+ while retries<max_retries:
+  try:
+   getAudioFiles(getTextList(makingStage3),makingStage5)
+   break
+  except Exception as e:
+   print(f"Error: {e}")
+   retries+=1
+   if retries<max_retries:print(f"Retrying... (Attempt {retries}/{max_retries})")
+   else:print("Maximum retries reached. Exiting.")
+
+newVideos=input("Are there any videos? (1 for Yes, 0 for No): ")
+numVideos=int(input("How many videos to generate? :"))
+
+if newVideos=='1':
+ databaseDuplicateHandlingFolder(newVideosDir)
+ databaseNewFileHandling(databaseCSV,newVideosDir,videosDir)
+
+databaseDuplicateHandlingCSV(databaseCSV)
+databaseDuplicateHandlingFolder(videosDir)
+checkIfAllFilesPresent(databaseCSV,videosDir)
+
+for _ in range(numVideos):
+ pickRandomVideos(databaseCSV,videosDir,makingStage1)
+ resizeVideos(makingStage1,makingStage2)
+ getFirstFrame(makingStage2,makingStage3)
+ getAllCoveredFrames(makingStage3,makingStage4)
+ retry_function_until_success()
+ makeVideoAudioSection(makingStage4,makingStage5,makingStage6)
+ combineVideoAudioPart1(makingStage5,makingStage6,makingStage7,fp3=30)
+ combineIntroMain(makingStage2,makingStage7,makingStage8)
+ combineAllClips(makingStage8,makingStage9)
+ addWaterMark(makingStage9,waterMark)
+ finishUp(databaseCSV,makingStage1,makingStage2,makingStage3,makingStage4,makingStage5,makingStage6,makingStage7,makingStage8,makingStage9,outputDir)
