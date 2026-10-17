@@ -1,23 +1,39 @@
-newVideos = input("Are there any videos? (1 for Yes, 0 for No): ")
-numVideos = int(input("How many videos to generate? :"))
+"""Build a local video compilation without accounts or uploads."""
+import argparse
+import json
+from pathlib import Path
+import sys
 
-if newVideos == '1':
-    databaseDuplicateHandlingFolder(newVideosDir)
-    databaseNewFileHandling(databaseCSV, newVideosDir, videosDir)
+from local_pipeline import compile_clips, demo_inputs, require_tools
 
-databaseDuplicateHandlingCSV(databaseCSV)
-databaseDuplicateHandlingFolder(videosDir)
-checkIfAllFilesPresent(databaseCSV, videosDir)
 
-for _ in range(numVideos):
-    pickRandomVideos(databaseCSV, videosDir, makingStage1)
-    resizeVideos(makingStage1, makingStage2)
-    getFirstFrame(makingStage2, makingStage3)
-    getAllCoveredFrames(makingStage3, makingStage4)
-    retry_function_until_success()
-    makeVideoAudioSection(makingStage4, makingStage5, makingStage6)
-    combineVideoAudioPart1(makingStage5, makingStage6, makingStage7, fp3=30)
-    combineIntroMain(makingStage2, makingStage7, makingStage8)
-    combineAllClips(makingStage8, makingStage9)
-    addWaterMark(makingStage9, waterMark)
-    finishUp(databaseCSV, makingStage1, makingStage2, makingStage3, makingStage4, makingStage5, makingStage6, makingStage7, makingStage8, makingStage9, outputDir)
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('inputs', nargs='*', type=Path, help='Local video files in compilation order')
+    parser.add_argument('--demo', type=Path, metavar='DIRECTORY', help='Generate original fixture clips in a fresh directory')
+    parser.add_argument('--output', type=Path, required=True, help='New .mp4 output file; existing files are refused')
+    parser.add_argument('--report', type=Path, help='Optional new JSON report file')
+    args = parser.parse_args(argv)
+    try:
+        require_tools()
+        if bool(args.inputs) == bool(args.demo):
+            raise ValueError('Choose local input files OR --demo DIRECTORY')
+        if args.output.exists() or (args.report and args.report.exists()):
+            raise ValueError('Output/report already exists; choose new filenames')
+        if args.report and args.report.resolve() == args.output.resolve():
+            raise ValueError('Output and report must be different files')
+        inputs = demo_inputs(args.demo) if args.demo else args.inputs
+        result = compile_clips(inputs, args.output)
+        if args.report:
+            args.report.parent.mkdir(parents=True, exist_ok=True)
+            with args.report.open('x', encoding='utf-8') as stream:
+                json.dump(result, stream, indent=2)
+                stream.write('\n')
+        print(json.dumps(result, indent=2))
+    except (ValueError, OSError, json.JSONDecodeError) as exc:
+        parser.exit(1, f'Error: {exc}\n')
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

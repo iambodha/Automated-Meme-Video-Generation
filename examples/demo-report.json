@@ -1,0 +1,18 @@
+{
+  "output": "demo.mp4",
+  "width": 360,
+  "height": 640,
+  "fps": 24,
+  "duration_s": 4.020996,
+  "inputs": [
+    {
+      "name": "01-build.mp4",
+      "sha256": "81408aa3728065122a025b3265af132253a8c60df6ba3127dfb91ac9c7ed0930"
+    },
+    {
+      "name": "02-tests.mp4",
+      "sha256": "e620fed10ede36e3c131701a00411dda9433e39d7d4a8f84db8340fa9c0bc877"
+    }
+  ],
+  "mode": "local compilation; no OCR, speech service, browser login, or upload"
+}
