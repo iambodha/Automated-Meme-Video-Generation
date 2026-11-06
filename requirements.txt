@@ -1,0 +1,3 @@
+# Supported local workflow: Python 3.10+ standard library only.
+# Install FFmpeg/FFprobe with libx264, AAC, and drawtext support separately.
+# Historical OCR/browser/upload code is outside this dependency contract.
